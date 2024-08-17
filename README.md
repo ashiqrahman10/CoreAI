@@ -24,9 +24,10 @@ This project leverages the power of Google's Gemini large language model to crea
 3. **Set Up Gemini API Key:**
    * Obtain a Gemini API key from Google.
    * Set the `GEMINI_API_KEY` environment variable:
-     ```bash
-     export GEMINI_API_KEY='YOUR_ACTUAL_API_KEY' 
-     ```
+
+    ```bash
+    export GEMINI_API_KEY='YOUR_ACTUAL_API_KEY' 
+    ```
 
 ## Usage
 
@@ -62,4 +63,3 @@ Contributions are welcome!  Please read the CONTRIBUTING.md file for guidelines 
 ## License
 
 This project is licensed under the MIT License.  See the LICENSE file for details.
-```
