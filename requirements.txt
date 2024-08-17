@@ -1,1 +1,6 @@
-gemini
+google.generativeai
+langchain
+faiss-cpu
+openai
+langchain-community
+tiktoken
