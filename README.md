@@ -42,3 +42,29 @@ Harness the power of Google's Gemini large language model to interact with your 
    * Type `y` to execute
 
 ## 💡 Example
+```
+PS D:\Projects\ai-powered-cli> python3 .\main.py
+$ask list all files
+> Execute "dir /a"? [y/N] y
+ Volume in drive D is New Volume
+ Volume Serial Number is 6CBF-C757
+
+ Directory of D:\Projects\ai-powered-cli
+
+10/19/2024  08:05 PM    <DIR>          .
+10/19/2024  07:36 PM    <DIR>          ..
+10/19/2024  07:40 PM                56 .env
+10/19/2024  07:59 PM    <DIR>          .git
+10/19/2024  07:54 PM             3,308 .gitignore
+10/19/2024  07:36 PM            35,823 LICENSE
+10/19/2024  07:53 PM             3,015 main.py
+10/19/2024  07:59 PM             1,264 README.md
+10/19/2024  07:57 PM             3,304 requirements.txt
+10/19/2024  07:37 PM    <DIR>          venv
+10/19/2024  07:43 PM    <DIR>          wenv
+               6 File(s)         46,770 bytes
+               5 Dir(s)  776,908,189,696 bytes free
+
+$ask
+```
+
