@@ -1,9 +1,10 @@
 import os
 import subprocess
 import google.generativeai as genai
+from dotenv import load_dotenv
 
-# Replace with your actual Gemini API credentials
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+load_dotenv()
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Create the model
 generation_config = {
@@ -41,7 +42,10 @@ model = genai.GenerativeModel(
 def execute_command(command):
     """Executes the given terminal command and prints the output."""
     try:
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        if os.name == 'nt':  # Windows
+            result = subprocess.run(command, shell=True, capture_output=True, text=True, encoding='utf-8')
+        else:  # Unix-based systems
+            result = subprocess.run(command, shell=True, capture_output=True, text=True)
         print(result.stdout)
     except Exception as e:
         print(f"Error executing command: {e}")
@@ -50,21 +54,39 @@ while True:
     user_input = input("$ask ")
 
     # Use Gemini API to get the corresponding command
-    chat_session = model.start_chat(
-    history=[
-        {
-        "role": "user",
-        "parts": [
-            "Translate the following user intent into a terminal command. Give only the command and nothing else:",
-        ],
-        },
-        {
-        "role": "model",
-        "parts": [
-            "Please provide the user intent you would like translated into a terminal command. \n",
-        ],
-        },
-    ]
+    if os.name == 'nt':  # Windows
+        chat_session = model.start_chat(
+            history=[
+                {
+                "role": "user",
+                "parts": [
+                    "Translate the following user intent into a Windows Command Prompt command. Give only the command and nothing else:",
+                ],
+                },
+                {
+                "role": "model",
+                "parts": [
+                    "Please provide the user intent you would like translated into a Windows Command Prompt command.\n",
+                ],
+                },
+            ]
+        )
+    else:  # Unix-based systems
+        chat_session = model.start_chat(
+        history=[
+            {
+            "role": "user",
+            "parts": [
+                "Translate the following user intent into a terminal command. Give only the command and nothing else:",
+            ],
+            },
+            {
+            "role": "model",
+            "parts": [
+                "Please provide the user intent you would like translated into a terminal command. \n",
+            ],
+            },
+        ]
     )
 
     response = chat_session.send_message(user_input)
