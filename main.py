@@ -2,6 +2,8 @@ import os
 import subprocess
 import google.generativeai as genai
 from dotenv import load_dotenv
+import tkinter as tk
+from tkinter import ttk
 
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
@@ -36,7 +38,6 @@ model = genai.GenerativeModel(
         "threshold": "BLOCK_NONE",
     },
 ]
-  # See https://ai.google.dev/gemini-api/docs/safety-settings
 )
 
 def execute_command(command):
@@ -50,17 +51,117 @@ def execute_command(command):
     except Exception as e:
         print(f"Error executing command: {e}")
 
-while True:
-    user_input = input("$ask ")
+def get_user_input():
+    """Gets user input from a UI window."""
+    def submit_input():
+        user_input = input_entry.get().strip()
+        if not user_input:
+            return
+            
+        # Hide input elements and show confirmation
+        input_entry.pack_forget()
+        icon_label.pack_forget()
+        
+        command = get_command(user_input)
+        
+        # Check if command is too long
+        if len(command) > 80:  # Reasonable length for popup box
+            root.destroy()
+            print("Command too long to display. Please try a simpler request.")
+            return
+            
+        confirm_frame = tk.Frame(main_frame, bg="#1f1f1f")
+        confirm_frame.pack(fill=tk.BOTH, expand=True)
+        
+        confirm_label = tk.Label(confirm_frame, text=f"Execute \"{command}\"?", 
+                               font=("Segoe UI", 12), bg="#1f1f1f", fg="white")
+        confirm_label.pack(side=tk.LEFT, padx=5)
+        
+        buttons = []
+        yes_btn = tk.Button(confirm_frame, text="Yes", command=lambda: confirm_execute(command),
+                           bg="#2f2f2f", fg="white", relief="flat", padx=10)
+        yes_btn.pack(side=tk.LEFT, padx=5)
+        buttons.append(yes_btn)
+        
+        no_btn = tk.Button(confirm_frame, text="No", command=root.destroy,
+                          bg="#2f2f2f", fg="white", relief="flat", padx=10)
+        no_btn.pack(side=tk.LEFT, padx=5)
+        buttons.append(no_btn)
 
-    # Use Gemini API to get the corresponding command
+        # Initialize selection
+        current_selection = 0
+        buttons[current_selection].configure(bg="#4f4f4f")
+
+        def move_selection(direction):
+            nonlocal current_selection
+            buttons[current_selection].configure(bg="#2f2f2f")
+            current_selection = (current_selection + direction) % len(buttons)
+            buttons[current_selection].configure(bg="#4f4f4f")
+
+        def select_current():
+            if current_selection == 0:
+                confirm_execute(command)
+            else:
+                root.destroy()
+
+        # Bind arrow keys and enter for selection
+        root.bind('<Left>', lambda e: move_selection(-1))
+        root.bind('<Right>', lambda e: move_selection(1))
+        root.bind('<Return>', lambda e: select_current())
+
+    def confirm_execute(command):
+        root.destroy()
+        execute_command(command)
+
+    def on_escape(event):
+        root.destroy()
+
+    root = tk.Tk()
+    root.title("CoreAI")
+    
+    # Calculate position to center horizontally and appear near top of screen
+    screen_width = root.winfo_screenwidth()
+    window_width = 700
+    x_position = (screen_width - window_width) // 2
+    root.geometry(f"{window_width}x60+{x_position}+100")
+    
+    root.configure(bg="#1f1f1f")
+    root.attributes('-topmost', True)
+    root.overrideredirect(True)
+    
+    # Main frame
+    main_frame = tk.Frame(root, bg="#1f1f1f", padx=10, pady=10)
+    main_frame.pack(fill=tk.BOTH, expand=True)
+    
+    # Search icon/label ($ symbol as placeholder)
+    icon_label = tk.Label(main_frame, text="$", font=("Segoe UI", 12), bg="#1f1f1f", fg="#666666")
+    icon_label.pack(side=tk.LEFT, padx=(0, 10))
+    
+    # Input entry
+    input_entry = tk.Entry(main_frame, font=("Segoe UI", 12), bg="#1f1f1f", fg="white", 
+                          insertbackground="white", relief="flat")
+    input_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    input_entry.focus_set()
+    
+    # Bind events
+    root.bind('<Return>', lambda e: submit_input())
+    root.bind('<Escape>', on_escape)
+    
+    # Add subtle border
+    border_frame = tk.Frame(root, bg="#333333", height=1)
+    border_frame.pack(side=tk.BOTTOM, fill=tk.X)
+    
+    root.mainloop()
+
+def get_command(user_input):
+    """Gets the command from Gemini API based on user input."""
     if os.name == 'nt':  # Windows
         chat_session = model.start_chat(
             history=[
                 {
                 "role": "user",
                 "parts": [
-                    "Translate the following user intent into a Windows Command Prompt command. Give only the command and nothing else:",
+                    "Translate the following user intent into a Windows Command Prompt command. Give only the command and nothing else. The command must fit on one line:",
                 ],
                 },
                 {
@@ -77,7 +178,7 @@ while True:
             {
             "role": "user",
             "parts": [
-                "Translate the following user intent into a terminal command. Give only the command and nothing else:",
+                "Translate the following user intent into a terminal command. Give only the command and nothing else. The command must fit on one line:",
             ],
             },
             {
@@ -90,9 +191,7 @@ while True:
     )
 
     response = chat_session.send_message(user_input)
-    command = response.text.strip() # Extract the command from the response
+    return response.text.strip()
 
-    print(f"> Execute \"{command}\"? [y/N] ", end="")
-    confirmation = input().lower()
-    if confirmation == "y":
-        execute_command(command)
+while True:
+    get_user_input()

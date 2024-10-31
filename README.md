@@ -1,4 +1,4 @@
-# 🚀 AI-Powered CLI
+# 🚀 CoreAI
 
 Harness the power of Google's Gemini large language model to interact with your terminal using natural language!
 
