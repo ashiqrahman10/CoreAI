@@ -4,6 +4,8 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import tkinter as tk
 from tkinter import ttk
+import threading
+import sys
 
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
@@ -58,12 +60,50 @@ def get_user_input():
         if not user_input:
             return
             
+        if user_input.lower() == "exit":
+            root.destroy()
+            sys.exit()
+            
         # Hide input elements and show confirmation
         input_entry.pack_forget()
         icon_label.pack_forget()
+
+        # Start pulsing animation
+        input_entry.configure(bg="#2a2a3f")
+        # animate_processing()
         
-        command = get_command(user_input)
+        # Get command in background thread
+        def get_command_thread():
+            command = get_command(user_input)
+            root.after(0, lambda: show_confirmation(command))
         
+        threading.Thread(target=get_command_thread, daemon=True).start()
+
+    # def animate_processing():
+    #     """Creates a pulsing glow effect while processing"""
+    #     colors = ["#2a2a3f", "#2a2a4f", "#2a2a5f", "#2a2a4f"]
+    #     def pulse(index=0):
+    #         # Only continue animation if window still exists and hasn't been destroyed
+    #         if input_entry.winfo_exists() and not root.winfo_exists():
+    #             return
+    #         try:
+    #             input_entry.configure(bg=colors[index])
+    #             root.after_id = root.after(200, lambda: pulse((index + 1) % len(colors)))
+    #         except tk.TclError:
+    #             return  # Silently exit if window was destroyed
+    #     pulse()
+
+    def show_confirmation(command):
+        # Cancel any pending animation
+        if hasattr(root, 'after_id'):
+            root.after_cancel(root.after_id)
+        
+        # Stop animation by changing back to normal color
+        try:
+            input_entry.configure(bg="#1f1f1f")
+        except tk.TclError:
+            return  # Window might be already destroyed
+            
         # Check if command is too long
         if len(command) > 80:  # Reasonable length for popup box
             root.destroy()
