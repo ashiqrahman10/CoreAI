@@ -1,11 +1,12 @@
 # 🚀 CoreAI
 
-Harness the power of Google's Gemini large language model to interact with your terminal using natural language!
+Harness the power of Google's Gemini large language model to interact with your terminal using natural language, enhanced with RAG (Retrieval Augmented Generation) for more contextual responses!
 
 ## ✨ Features
 
 * 🗣️ **Natural Language Understanding:** Communicate with your CLI using everyday language.
 * 🔄 **Command Translation:** Gemini interprets your intent and generates the appropriate terminal command.
+* 🧠 **RAG Integration:** Leverages previous command history and documentation for more accurate responses.
 * ✅ **User Confirmation:** Safety first! Confirm before executing any command.
 * 🛡️ **Error Handling:** Robust mechanisms to gracefully manage unexpected situations.
 
@@ -38,6 +39,7 @@ Harness the power of Google's Gemini large language model to interact with your 
 2. **Start Interacting!**
    * You'll see the `$ask` prompt
    * Type your request naturally (e.g., "Show me all the files in this directory")
+   * The system will use RAG to understand context from previous commands
    * Review the suggested command
    * Type `y` to execute
 
@@ -67,4 +69,3 @@ $ask list all files
 
 $ask
 ```
-

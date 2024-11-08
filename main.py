@@ -6,6 +6,11 @@ import tkinter as tk
 from tkinter import ttk
 import threading
 import sys
+import json
+from pathlib import Path
+import numpy as np
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
@@ -42,6 +47,64 @@ model = genai.GenerativeModel(
 ]
 )
 
+# Initialize sentence transformer model for embeddings
+sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Setup data storage
+data_dir = Path.home() / '.coreai'
+data_dir.mkdir(exist_ok=True)
+
+alias_file = data_dir / 'aliases.json'
+vector_db_file = data_dir / 'vector_db.json'
+
+# Initialize or load alias mappings
+if alias_file.exists():
+    with open(alias_file) as f:
+        aliases = json.load(f)
+else:
+    aliases = {}
+    with open(alias_file, 'w') as f:
+        json.dump(aliases, f)
+
+# Initialize or load vector database
+if vector_db_file.exists():
+    with open(vector_db_file) as f:
+        vector_db = json.load(f)
+else:
+    vector_db = {
+        'queries': [],
+        'commands': [],
+        'embeddings': []
+    }
+    with open(vector_db_file, 'w') as f:
+        json.dump(vector_db, f)
+
+def save_to_vector_db(query, command):
+    """Save successful query-command pairs to vector database"""
+    query_embedding = sentence_model.encode(query).tolist()
+    
+    vector_db['queries'].append(query)
+    vector_db['commands'].append(command)
+    vector_db['embeddings'].append(query_embedding)
+    
+    with open(vector_db_file, 'w') as f:
+        json.dump(vector_db, f)
+
+def find_similar_command(query, threshold=0.8):
+    """Find similar command from vector database"""
+    if not vector_db['queries']:
+        return None
+        
+    query_embedding = sentence_model.encode(query)
+    db_embeddings = np.array(vector_db['embeddings'])
+    
+    similarities = cosine_similarity([query_embedding], db_embeddings)[0]
+    max_sim_idx = np.argmax(similarities)
+    
+    if similarities[max_sim_idx] >= threshold:
+        return vector_db['commands'][max_sim_idx]
+    return None
+
 def execute_command(command):
     """Executes the given terminal command and prints the output."""
     try:
@@ -64,36 +127,41 @@ def get_user_input():
             root.destroy()
             sys.exit()
             
+        # Handle alias commands
+        if user_input.startswith("alias "):
+            parts = user_input[6:].split("=", 1)
+            if len(parts) == 2:
+                alias_name = parts[0].strip()
+                command = parts[1].strip().strip('"\'')
+                aliases[alias_name] = command
+                with open(alias_file, 'w') as f:
+                    json.dump(aliases, f)
+                root.destroy()
+                print(f"Alias '{alias_name}' created for command: {command}")
+                return
+                
+        # Check if input matches an alias
+        if user_input in aliases:
+            command = aliases[user_input]
+            root.destroy()
+            execute_command(command)
+            return
+            
         # Hide input elements and show confirmation
         input_entry.pack_forget()
         icon_label.pack_forget()
 
         # Start pulsing animation
         input_entry.configure(bg="#2a2a3f")
-        # animate_processing()
         
         # Get command in background thread
         def get_command_thread():
             command = get_command(user_input)
-            root.after(0, lambda: show_confirmation(command))
+            root.after(0, lambda: show_confirmation(command, user_input))
         
         threading.Thread(target=get_command_thread, daemon=True).start()
 
-    # def animate_processing():
-    #     """Creates a pulsing glow effect while processing"""
-    #     colors = ["#2a2a3f", "#2a2a4f", "#2a2a5f", "#2a2a4f"]
-    #     def pulse(index=0):
-    #         # Only continue animation if window still exists and hasn't been destroyed
-    #         if input_entry.winfo_exists() and not root.winfo_exists():
-    #             return
-    #         try:
-    #             input_entry.configure(bg=colors[index])
-    #             root.after_id = root.after(200, lambda: pulse((index + 1) % len(colors)))
-    #         except tk.TclError:
-    #             return  # Silently exit if window was destroyed
-    #     pulse()
-
-    def show_confirmation(command):
+    def show_confirmation(command, query):
         # Cancel any pending animation
         if hasattr(root, 'after_id'):
             root.after_cancel(root.after_id)
@@ -118,7 +186,8 @@ def get_user_input():
         confirm_label.pack(side=tk.LEFT, padx=5)
         
         buttons = []
-        yes_btn = tk.Button(confirm_frame, text="Yes", command=lambda: confirm_execute(command),
+        yes_btn = tk.Button(confirm_frame, text="Yes", 
+                           command=lambda: confirm_execute(command, query),
                            bg="#2f2f2f", fg="white", relief="flat", padx=10)
         yes_btn.pack(side=tk.LEFT, padx=5)
         buttons.append(yes_btn)
@@ -140,7 +209,7 @@ def get_user_input():
 
         def select_current():
             if current_selection == 0:
-                confirm_execute(command)
+                confirm_execute(command, query)
             else:
                 root.destroy()
 
@@ -149,9 +218,10 @@ def get_user_input():
         root.bind('<Right>', lambda e: move_selection(1))
         root.bind('<Return>', lambda e: select_current())
 
-    def confirm_execute(command):
+    def confirm_execute(command, query):
         root.destroy()
         execute_command(command)
+        save_to_vector_db(query, command)
 
     def on_escape(event):
         root.destroy()
@@ -194,7 +264,13 @@ def get_user_input():
     root.mainloop()
 
 def get_command(user_input):
-    """Gets the command from Gemini API based on user input."""
+    """Gets the command from vector DB or Gemini API based on user input."""
+    # First check vector DB for similar commands
+    similar_command = find_similar_command(user_input)
+    if similar_command:
+        return similar_command
+        
+    # If no similar command found, use Gemini API
     if os.name == 'nt':  # Windows
         chat_session = model.start_chat(
             history=[
