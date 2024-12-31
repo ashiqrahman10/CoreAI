@@ -1,4 +1,4 @@
-# 🚀 CoreAI
+# 🚀 CoreAI V.2.0.4
 
 Welcome to the most over-engineered way to interact with your terminal since someone decided to use voice commands in a noisy data center!
 
